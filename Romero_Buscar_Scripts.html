@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Busca de Scripts Medilab TesteV2</title>
+    <style>
+        /* Estilos Modernos e Azuis */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+            background-color: #f0f8ff; /* Azul muito claro */
+            color: #333;
+        }
+        h1 {
+            color: #004d99; /* Azul escuro */
+            border-bottom: 2px solid #b3d9ff;
+            padding-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        select, input[type="text"] { 
+            padding: 10px; 
+            margin: 5px 0 10px 0; 
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            width: calc(100% - 22px);
+            box-sizing: border-box;
+        }
+        /* Estilo dos Botões Modernos */
+        button {
+            background-color: #007bff; /* Azul primário */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px 10px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3; /* Azul mais escuro no hover */
+        }
+        /* Estilo do Input de Intervalo (para ficar lado a lado) */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-group > div {
+            flex: 1;
+        }
+        .input-group input {
+            width: 100%; /* Ajuste a largura dentro do flex container */
+        }
+
+        /* Resultados */
+        #results { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;}
+        .script-link { 
+            display: block; 
+            margin: 10px 0; 
+            padding: 12px; 
+            background: #e6f2ff; /* Fundo azul claro para links */
+            border-left: 5px solid #007bff;
+            text-decoration: none;
+            color: #004d99;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .script-link:hover {
+            background-color: #cce0ff;
+        }
+        .indisponivel {
+            display: block; 
+            margin: 10px 0; 
+            padding: 12px; 
+            background: #f8d7da; /* Fundo vermelho suave */
+            border-left: 5px solid #dc3545;
+            color: #721c24;
+            border-radius: 4px;
+        }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Busca de Scripts Medilab TesteV2 💾</h1>
+    
+    <label for="sistema">Sistema:</label>
+    <select id="sistema">
+        <option value="MediClinic">MediClinic</option>
+        <option value="Medisystem">Medisystem</option>
+        <option value="Mediweb">Mediweb</option>
+        <option value="Sislaudo">Sislaudo</option>
+    </select>
+    
+    <label for="sgbd">SGBD:</label>
+    <select id="sgbd">
+        <option value="firebird">Firebird</option>
+        <option value="PostgreSQL">PostgreSQL</option>
+        <option value="Oracle">Oracle</option>
+    </select>
+    
+    <label>Intervalo de Scripts (Máx. 4 Dígitos):</label>
+    <div class="input-group">
+        <div>
+            <input type="text" id="numero_inicio" placeholder="Início (ex: 001)" maxlength="4">
+        </div>
+        <div>
+            <input type="text" id="numero_fim" placeholder="Fim (ex: 488)" maxlength="4">
+        </div>
+    </div>
+    
+    <button onclick="buscarIntervalo()">Buscar Scripts no Intervalo</button>
+    <button onclick="verificarUltimo()">Informações sobre Verificação</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // A URL do seu servidor proxy, onde o Node.js está rodando
+        const PROXY_URL = 'http://localhost:3000/api/buscar-scripts';
+
+        /**
+         * Faz a requisição para o servidor proxy e consolida os resultados.
+         */
+        async function buscarIntervalo() {
+            const sistema = document.getElementById('sistema').value;
+            const sgbd = document.getElementById('sgbd').value;
+            
+            const inicioStr = document.getElementById('numero_inicio').value;
+            const fimStr = document.getElementById('numero_fim').value;
+            
+            const inicio = parseInt(inicioStr, 10);
+            const fim = parseInt(fimStr, 10);
+            
+            if (isNaN(inicio) || isNaN(fim) || inicio > fim) {
+                document.getElementById('results').innerHTML = '<p class="error">⚠️ Por favor, insira um intervalo válido (início <= fim).</p>';
+                return;
+            }
+
+            let html = `<h3>Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
+            html += '<p>⏳ Enviando requisição ao servidor proxy (Aguarde alguns segundos)...</p>';
+            document.getElementById('results').innerHTML = html; 
+
+            try {
+                // Chama o servidor proxy (backend)
+                const response = await fetch(PROXY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sistema, sgbd, inicio, fim })
+                });
+
+                const data = await response.json();
+
+                if (!data.sucesso) {
+                    document.getElementById('results').innerHTML = `<p class="error">Erro no servidor: ${data.error || 'Falha desconhecida.'}</p>`;
+                    return;
+                }
+
+                // Monta o HTML final e o conteúdo consolidado
+                let resultadosHTML = `<h3>Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
+                let conteudoConsolidado = '';
+                let scriptsDisponiveis = 0;
+                const BASE_URL_SCRIPTS = 'http://medilab.tecnologia.ws/scriptsbd'; // Necessário para gerar link direto
+
+                data.data.forEach(res => {
+                    if (res.status === 'Disponível') {
+                        const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${res.numero}.txt`;
+                        resultadosHTML += `<a href="${url}" target="_blank" class="script-link">✅ Script ${res.numero} (Disponível)</a>`;
+                        conteudoConsolidado += `\n\n--- INÍCIO SCRIPT ${res.numero} ---\n`;
+                        conteudoConsolidado += res.conteudo;
+                        conteudoConsolidado += `\n--- FIM SCRIPT ${res.numero} ---`;
+                        scriptsDisponiveis++;
+                    } else {
+                        resultadosHTML += `<div class="indisponivel">❌ Script ${res.numero} (${res.status})</div>`;
+                    }
+                });
+
+                // Adiciona o botão de download se houver conteúdo
+                if (scriptsDisponiveis > 0) {
+                    resultadosHTML += `<button onclick="baixarConsolidado('${encodeURIComponent(conteudoConsolidado)}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" style="background-color: #28a745; margin-top: 20px;">💾 Baixar Conteúdo Consolidado (${scriptsDisponiveis} Scripts)</button>`;
+                } else {
+                    resultadosHTML += `<p class="error">Nenhum script disponível no intervalo.</p>`;
+                }
+
+                document.getElementById('results').innerHTML = resultadosHTML;
+
+            } catch (error) {
+                document.getElementById('results').innerHTML = `<p class="error">🔴 Falha na conexão com o servidor proxy (http://localhost:3000). Verifique se o Node.js está rodando no terminal!</p>`;
+            }
+        }
+
+        /**
+         * Função auxiliar para gerar e iniciar o download do arquivo consolidado.
+         */
+        function baixarConsolidado(conteudoCodificado, sistema, sgbd, inicio, fim) {
+            const conteudo = decodeURIComponent(conteudoCodificado);
+            const nomeArquivo = `${sistema}-${sgbd}-scripts_${inicio}_${fim}.txt`;
+            
+            // Cria um objeto Blob (Binary Large Object) com o conteúdo
+            const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+            
+            // Cria um link temporário para iniciar o download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Mantemos a função informativa para o outro botão
+        function verificarUltimo() {
+            const mensagem = `
+                <h3>✅ Verificação Habilitada</h3>
+                <p>O servidor proxy (Node.js) agora está fazendo a verificação de disponibilidade. Se a busca não retornar erros de conexão, as mensagens **(Disponível)** ou **(Não encontrado)** serão confiáveis.</p>
+            `;
+            document.getElementById('results').innerHTML = mensagem;
+        }
+    </script>
+</body>
+</html>
