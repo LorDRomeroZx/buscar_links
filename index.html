@@ -17,6 +17,7 @@
               'primary': '#4f46e5', // Indigo
               'success': '#10b981', // Emerald
               'danger': '#ef4444', // Red
+              'gemini': '#00BFFF', // Azul claro para Gemini
             }
           }
         }
@@ -38,6 +39,16 @@
             word-break: break-all;
             font-family: monospace;
             border: 1px solid #374151;
+        }
+
+        /* Estilo para a resposta do Gemini */
+        #gemini-explanation {
+            border-left: 4px solid #00BFFF; /* Cor Gemini */
+            background: #f0f8ff;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -100,6 +111,13 @@
         const PROXY_URL_PREVIEW = `${BASE_RENDER_URL}/api/fetch-script`;
         
         const BASE_URL_SCRIPTS = 'http://medilab.tecnologia.ws/scriptsbd';
+        
+        // --- CONFIGURAÇÃO GEMINI ---
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`;
+        const API_KEY = ""; // A chave API será fornecida pelo ambiente de execução
+
+        // 💡 NOVO: Cache global para guardar o conteúdo consolidado (para evitar erros de sintaxe no onclick)
+        const consolidatedContentCache = {};
 
         /**
          * Faz a requisição para o servidor proxy e consolida os resultados.
@@ -160,10 +178,11 @@
                             </div>
                         `;
 
-                        // Conteúdo para o download consolidado (retirado do Render)
-                        conteudoConsolidado += `\n\n--- INÍCIO SCRIPT ${res.numero} ---\n`;
+                        // 💡 Adiciona comentários de separação para a pré-visualização consolidada
+                        const separador = `-- ========================================================================= --`;
+                        conteudoConsolidado += `\n${separador}\n-- INÍCIO SCRIPT ${res.numero} (${sistema}/${sgbd}) --\n${separador}\n`;
                         conteudoConsolidado += res.conteudo;
-                        conteudoConsolidado += `\n--- FIM SCRIPT ${res.numero} ---`;
+                        conteudoConsolidado += `\n${separador}\n-- FIM SCRIPT ${res.numero} --\n${separador}\n`;
                         scriptsDisponiveis++;
                     } else {
                         // Item de erro moderno
@@ -173,12 +192,15 @@
                     }
                 });
 
-                // Adiciona o botão de download consolidado
+                // Adiciona o botão de pré-visualização consolidada
                 if (scriptsDisponiveis > 0) {
-                    // Usamos JSON.stringify para garantir que a string seja passada corretamente para o onclick, resolvendo possíveis erros de sintaxe de aspas/caracteres.
-                    const seguroConteudo = JSON.stringify(conteudoConsolidado);
+                    // 💡 NOVO: Cria uma chave única para a cache
+                    const cacheKey = `${sistema}-${sgbd}-${inicioStr}-${fimStr}`; 
+                    // 💡 NOVO: Armazena o conteúdo completo (sem codificar) na cache
+                    consolidatedContentCache[cacheKey] = conteudoConsolidado; 
                     
-                    resultadosHTML += `<button onclick='baixarConsolidado(${seguroConteudo}, "${sistema}", "${sgbd}", "${inicioStr}", "${fimStr}")' class="w-full bg-secondary text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">💾 Baixar Conteúdo Consolidado (${scriptsDisponiveis} Scripts)</button>`;
+                    // Passa apenas a chave para a função (prevenindo SyntaxError)
+                    resultadosHTML += `<button onclick="previsualizarConsolidado('${cacheKey}', '${scriptsDisponiveis}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" class="w-full bg-success text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">📄 Pré-visualização Consolidada (${scriptsDisponiveis} Scripts)</button>`;
                 } else {
                     document.getElementById('preview-area').innerHTML = ''; // Limpa a pré-visualização
                     resultadosHTML += `<p class="text-danger font-bold mt-4">Nenhum script disponível no intervalo.</p>`;
@@ -193,7 +215,37 @@
         }
 
         /**
-         * NOVA FUNÇÃO: Busca o script via proxy e exibe o conteúdo na área de pré-visualização.
+         * Pré-visualiza o conteúdo de TODOS os scripts de forma consolidada.
+         */
+        function previsualizarConsolidado(cacheKey, count, sistema, sgbd, inicio, fim) {
+            const previewArea = document.getElementById('preview-area');
+            
+            // 💡 NOVO: Recupera o conteúdo diretamente da cache
+            const conteudo = consolidatedContentCache[cacheKey];
+
+            // Verifica se o conteúdo está vazio (diagnóstico de falha do servidor)
+            if (!conteudo || conteudo.trim().length < 10) {
+                 previewArea.innerHTML = `<p class="text-danger font-bold">⚠️ Erro na Pré-visualização: O servidor Render não retornou conteúdo. O serviço pode estar em sleep ou a conexão falhou.</p>`;
+                 return;
+            }
+
+            // O conteúdo é a string limpa, vamos codificá-la apenas para a função de download
+            const downloadConteudo = encodeURIComponent(conteudo);
+            
+            // Exibe o conteúdo na área de pré-visualização
+            previewArea.innerHTML = `
+                <h4 class="text-xl font-semibold mb-3 text-primary border-b pb-2">📄 Pré-visualização Consolidada (${count} Scripts)</h4>
+                <pre>
+                    ${conteudo}
+                </pre>
+                
+                <!-- Adiciona a opção de baixar o arquivo consolidado aqui -->
+                <button onclick="baixarConsolidado('${downloadConteudo}', '${sistema}', '${sgbd}', '${inicio}', '${fim}')" class="bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-800 transition duration-150 shadow-md mt-4">💾 Baixar Ficheiro Consolidado (.txt)</button>
+            `;
+        }
+
+        /**
+         * Busca o script via proxy e exibe o conteúdo na área de pré-visualização.
          */
         async function previsualizarScript(url, numero) {
             const previewArea = document.getElementById('preview-area');
@@ -210,11 +262,20 @@
                 const data = await response.json();
 
                 if (data.sucesso) {
+                    const scriptContent = data.content || "Conteúdo indisponível.";
+                    const encodedContent = encodeURIComponent(scriptContent);
+                    
                     previewArea.innerHTML = `
                         <h4 class="text-xl font-semibold mb-3 text-primary border-b pb-2">📄 Pré-visualização do Script ${numero}</h4>
-                        <pre>
-                            ${data.content}
+                        <div class="flex space-x-2 mb-3">
+                            <button class="text-xs bg-gemini text-white font-semibold py-1 px-3 rounded-full hover:bg-sky-600 transition shadow-md" onclick="explicarScriptGemini('${encodedContent}', '${numero}')">
+                                ✨ Explicar Script (Gemini)
+                            </button>
+                        </div>
+                        <pre id="script-content-display">
+                            ${scriptContent}
                         </pre>
+                        <div id="gemini-explanation-${numero}"></div>
                     `;
                 } else {
                     previewArea.innerHTML = `<p class="text-danger font-bold">Falha ao carregar a pré-visualização: ${data.error || 'Erro desconhecido.'}</p>`;
@@ -225,17 +286,71 @@
         }
 
         /**
+         * NOVA FUNÇÃO: Chama a API Gemini para analisar o script SQL.
+         */
+        async function explicarScriptGemini(encodedContent, numero) {
+            const explanationArea = document.getElementById(`gemini-explanation-${numero}`);
+            
+            // 1. Decodificar o conteúdo do script
+            const scriptContent = decodeURIComponent(encodedContent);
+            
+            // 2. Mostrar estado de carregamento
+            explanationArea.innerHTML = `<div class="text-center py-4 text-indigo-500">
+                Analisando o Script ${numero} com a IA...
+            </div>`;
+
+            // 3. Configurar o Payload da API Gemini
+            const systemPrompt = "Aja como um analista de banco de dados SQL. Seu objetivo é resumir o propósito do script SQL fornecido (DML ou DDL) em português de Portugal. Seja conciso e liste o que o script faz e qual é o seu impacto potencial (por exemplo, altera a estrutura da tabela X, ou atualiza registros na tabela Y). Use Markdown para formatar a resposta.";
+            const userQuery = `Analise o seguinte script SQL:\n\n${scriptContent}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+            
+            try {
+                // 4. Chamar a API Gemini
+                const response = await fetch(GEMINI_API_URL + API_KEY, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao gerar explicação. A resposta da IA estava vazia.";
+                
+                // 5. Exibir a explicação
+                explanationArea.innerHTML = `
+                    <div id="gemini-explanation" class="mt-4">
+                        <h5 class="font-bold text-gemini mb-2">✨ Análise Gemini: Script ${numero}</h5>
+                        <p class="whitespace-pre-wrap">${text}</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                explanationArea.innerHTML = `<p class="text-danger font-bold mt-4">Falha na conexão com a API Gemini: ${error.message}</p>`;
+            }
+        }
+
+
+        /**
          * Função auxiliar para gerar e iniciar o download do arquivo consolidado.
          */
-        function baixarConsolidado(conteudoConsolidadoJson, sistema, sgbd, inicio, fim) {
-            // Se a string foi passada via JSON.stringify, ela deve ser parseada:
-            const conteudo = JSON.parse(conteudoConsolidadoJson);
+        function baixarConsolidado(conteudoCodificado, sistema, sgbd, inicio, fim) {
+            // Reverte o encoding para obter o conteúdo
+            const conteudo = decodeURIComponent(conteudoCodificado);
+            
+            // Recalcula os metadados do nome do ficheiro (baseado na última pesquisa, ou usa placeholders)
+            const sistemaNome = sistema || document.getElementById('sistema').value;
+            const sgbdNome = sgbd || document.getElementById('sgbd').value;
+            const inicioNumero = inicio || document.getElementById('numero_inicio').value.padStart(3, '0');
+            const fimNumero = fim || document.getElementById('numero_fim').value.padStart(3, '0');
             
             // --- NOVO DIAGNÓSTICO: Verifica se o conteúdo está vazio ---
             if (!conteudo || conteudo.trim().length === 0 || conteudo.trim().length < 10) {
                 // Exibe uma mensagem de erro temporária para o usuário
-                document.getElementById('results').insertAdjacentHTML('afterend',
-                    '<p id="download-error" class="text-danger font-bold text-center mt-4">⚠️ Erro no Download: Conteúdo vazio. Verifique se o servidor Render retornou dados.</p>');
+                document.getElementById('preview-area').insertAdjacentHTML('afterend',
+                    '<p id="download-error" class="text-danger font-bold text-center mt-4">⚠️ Erro no Download: Conteúdo vazio. O servidor Render não forneceu os dados.</p>');
                 
                 // Remove a mensagem após 5 segundos
                 setTimeout(() => {
@@ -246,7 +361,7 @@
             }
             // --- FIM DO NOVO DIAGNÓSTICO ---
             
-            const nomeArquivo = `${sistema}-${sgbd}-scripts_${inicio}_${fim}.txt`;
+            const nomeArquivo = `${sistemaNome}-${sgbdNome}-scripts_${inicioNumero}_${fimNumero}.txt`;
             
             // Cria um objeto Blob (Binary Large Object) com o conteúdo
             const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
@@ -256,9 +371,9 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = nomeArquivo;
-            document.body.appendChild(a);
-            a.click(); // Dispara o download
-            document.body.removeChild(a);
+            
+            // Dispara o clique e limpa o URL do objeto
+            a.click(); 
             URL.revokeObjectURL(url);
         }
         
