@@ -50,6 +50,13 @@
             border-radius: 0.5rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
+        /* Estilo para a palavra-chave destacada */
+        .highlight {
+            background-color: #facc15; /* Amarelo 400 do Tailwind */
+            color: #1f2937; /* Cinza escuro para contraste */
+            border-radius: 2px;
+            padding: 0 2px;
+        }
     </style>
 </head>
 <body class="font-sans bg-gray-50 min-h-screen flex items-start justify-center p-4 sm:p-8">
@@ -124,6 +131,23 @@
 
         // 💡 NOVO: Cache global para guardar o conteúdo consolidado (para evitar erros de sintaxe no onclick)
         const consolidatedContentCache = {};
+        // 💡 NOVO: Variável global para guardar a palavra-chave atual para pré-visualizações individuais
+        let currentKeyword = ''; 
+
+        /**
+         * Função utilitária para aplicar o destaque de palavra-chave.
+         */
+        function highlightKeyword(content, keyword) {
+            if (!keyword) return content;
+
+            // Expressão regular para encontrar a palavra-chave, case-insensitive, e garantir que não quebre tags HTML
+            // A classe 'highlight' está definida no <style> para o fundo amarelo
+            const regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            
+            // Aplica o destaque usando a classe CSS 'highlight'
+            return content.replace(regex, '<span class="highlight">$1</span>');
+        }
+
 
         /**
          * Faz a requisição para o servidor proxy e consolida os resultados.
@@ -140,6 +164,8 @@
 
             // 💡 NOVO: Captura a palavra-chave para filtragem
             const palavraChave = document.getElementById('palavra_chave').value.trim();
+            // 💡 NOVO: Armazena a palavra-chave globalmente para pré-visualizações individuais
+            currentKeyword = palavraChave;
             
             if (isNaN(inicio) || isNaN(fim) || inicio > fim) {
                 document.getElementById('results').innerHTML = '<p class="text-danger font-bold">⚠️ Por favor, insira um intervalo válido (início <= fim).</p>';
@@ -234,7 +260,7 @@
                     consolidatedContentCache[cacheKey] = conteudoConsolidado; 
                     
                     // Passa apenas a chave para a função (prevenindo SyntaxError)
-                    resultadosHTML += `<button onclick="previsualizarConsolidado('${cacheKey}', '${scriptsFiltrados}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" class="w-full bg-success text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">📄 Pré-visualização Consolidada (${scriptsFiltrados} Scripts)</button>`;
+                    resultadosHTML += `<button onclick="previsualizarConsolidado('${cacheKey}', '${scriptsFiltrados}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}', '${palavraChave}')" class="w-full bg-success text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">📄 Pré-visualização Consolidada (${scriptsFiltrados} Scripts)</button>`;
                 } else if (scriptsDisponiveis > 0 && palavraChave) {
                     // Caso tenha scripts disponíveis, mas nenhum corresponda à palavra-chave
                     resultadosHTML += `<p class="text-danger font-bold mt-4">Nenhum script disponível no intervalo corresponde à palavra-chave: "${palavraChave}".</p>`;
@@ -254,7 +280,7 @@
         /**
          * Pré-visualiza o conteúdo de TODOS os scripts de forma consolidada.
          */
-        function previsualizarConsolidado(cacheKey, count, sistema, sgbd, inicio, fim) {
+        function previsualizarConsolidado(cacheKey, count, sistema, sgbd, inicio, fim, palavraChave) { // 💡 NOVO: Aceita palavraChave
             const previewArea = document.getElementById('preview-area');
             
             // 💡 NOVO: Recupera o conteúdo diretamente da cache
@@ -266,14 +292,18 @@
                  return;
             }
 
+            // 💡 NOVO: Aplica o destaque ao conteúdo consolidado
+            const conteudoDestacado = highlightKeyword(conteudo, palavraChave);
+
             // O conteúdo é a string limpa, vamos codificá-la apenas para a função de download
             const downloadConteudo = encodeURIComponent(conteudo);
             
             // Exibe o conteúdo na área de pré-visualização
             previewArea.innerHTML = `
                 <h4 class="text-xl font-semibold mb-3 text-primary border-b pb-2">📄 Pré-visualização Consolidada (${count} Scripts)</h4>
+                <p class="text-sm text-gray-600 mb-3">Pesquisa por: ${palavraChave ? `"${palavraChave}"` : '(Nenhuma palavra-chave)'}</p>
                 <pre>
-                    ${conteudo}
+                    ${conteudoDestacado} // 💡 Usa conteúdo destacado
                 </pre>
                 
                 <!-- Adiciona a opção de baixar o arquivo consolidado aqui -->
@@ -302,6 +332,9 @@
                     const scriptContent = data.content || "Conteúdo indisponível.";
                     const encodedContent = encodeURIComponent(scriptContent);
                     
+                    // 💡 NOVO: Aplica o destaque ao conteúdo do script individual
+                    const conteudoDestacado = highlightKeyword(scriptContent, currentKeyword);
+
                     previewArea.innerHTML = `
                         <h4 class="text-xl font-semibold mb-3 text-primary border-b pb-2">📄 Pré-visualização do Script ${numero}</h4>
                         <div class="flex space-x-2 mb-3">
@@ -310,7 +343,7 @@
                             </button>
                         </div>
                         <pre id="script-content-display">
-                            ${scriptContent}
+                            ${conteudoDestacado} // 💡 Usa conteúdo destacado
                         </pre>
                         <div id="gemini-explanation-${numero}"></div>
                     `;
