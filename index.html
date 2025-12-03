@@ -84,6 +84,12 @@
                 <input type="text" id="numero_inicio" placeholder="Início (ex: 001)" maxlength="4" class="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
                 <input type="text" id="numero_fim" placeholder="Fim (ex: 488)" maxlength="4" class="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
             </div>
+
+            <!-- 💡 NOVO: Campo para Palavra-Chave -->
+            <div>
+                <label for="palavra_chave" class="block text-sm font-medium text-gray-700 mb-1">Palavra-Chave (Opcional):</label>
+                <input type="text" id="palavra_chave" placeholder="Buscar por palavra-chave no conteúdo" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+            </div>
         </div>
         
         <!-- Action Buttons -->
@@ -131,6 +137,9 @@
             
             const inicio = parseInt(inicioStr, 10);
             const fim = parseInt(fimStr, 10);
+
+            // 💡 NOVO: Captura a palavra-chave para filtragem
+            const palavraChave = document.getElementById('palavra_chave').value.trim();
             
             if (isNaN(inicio) || isNaN(fim) || inicio > fim) {
                 document.getElementById('results').innerHTML = '<p class="text-danger font-bold">⚠️ Por favor, insira um intervalo válido (início <= fim).</p>';
@@ -162,30 +171,55 @@
                 let resultadosHTML = `<h3 class="text-xl font-semibold mb-3">Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
                 let conteudoConsolidado = '';
                 let scriptsDisponiveis = 0;
+                let scriptsFiltrados = 0; // Novo contador para scripts que correspondem à palavra-chave
 
+                // Processa e filtra os resultados do servidor
                 data.data.forEach(res => {
-                    if (res.status === 'Disponível') {
-                        const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${res.numero}.txt`;
-                        
-                        // Item de resultado moderno com Tailwind classes
-                        resultadosHTML += `
-                            <div class="flex items-center justify-between bg-green-50 p-3 rounded-lg border-l-4 border-success shadow-sm">
-                                <span class="text-sm font-medium text-gray-800">✅ Script ${res.numero} (Disponível)</span>
-                                <div class="space-x-2">
-                                    <a href="${url}" target="_blank" class="text-xs bg-success text-white py-1 px-3 rounded-full hover:bg-emerald-600 transition">Baixar</a>
-                                    <button class="text-xs bg-primary text-white py-1 px-3 rounded-full hover:bg-indigo-600 transition" onclick="previsualizarScript('${url}', '${res.numero}')">Pré-visualizar</button>
-                                </div>
-                            </div>
-                        `;
+                    const isDisponivel = (res.status === 'Disponível');
+                    let isMatch = true;
 
-                        // 💡 Adiciona comentários de separação para a pré-visualização consolidada
-                        const separador = `-- ========================================================================= --`;
-                        conteudoConsolidado += `\n${separador}\n-- INÍCIO SCRIPT ${res.numero} (${sistema}/${sgbd}) --\n${separador}\n`;
-                        conteudoConsolidado += res.conteudo;
-                        conteudoConsolidado += `\n${separador}\n-- FIM SCRIPT ${res.numero} --\n${separador}\n`;
+                    // 💡 Lógica de Filtragem por Palavra-Chave
+                    if (isDisponivel && palavraChave) {
+                        // Faz a pesquisa case-insensitive no conteúdo do script
+                        const contentLower = (res.conteudo || '').toLowerCase();
+                        const keywordLower = palavraChave.toLowerCase();
+                        if (!contentLower.includes(keywordLower)) {
+                            isMatch = false; // Não corresponde à palavra-chave
+                        }
+                    }
+
+                    if (isDisponivel) {
                         scriptsDisponiveis++;
+                    }
+
+                    // Apenas exibe scripts disponíveis ou indisponíveis (se não houver palavra-chave)
+                    // Se houver palavra-chave, só exibe se for 'Disponível' E houver 'Match'
+                    
+                    if (isDisponivel) {
+                        if (isMatch) {
+                            scriptsFiltrados++;
+                            const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${res.numero}.txt`;
+                            
+                            // Item de resultado moderno com Tailwind classes
+                            resultadosHTML += `
+                                <div class="flex items-center justify-between bg-green-50 p-3 rounded-lg border-l-4 border-success shadow-sm">
+                                    <span class="text-sm font-medium text-gray-800">✅ Script ${res.numero} (Disponível)</span>
+                                    <div class="space-x-2">
+                                        <a href="${url}" target="_blank" class="text-xs bg-success text-white py-1 px-3 rounded-full hover:bg-emerald-600 transition">Baixar</a>
+                                        <button class="text-xs bg-primary text-white py-1 px-3 rounded-full hover:bg-indigo-600 transition" onclick="previsualizarScript('${url}', '${res.numero}')">Pré-visualizar</button>
+                                    </div>
+                                </div>
+                            `;
+
+                            // Adiciona ao conteúdo consolidado SOMENTE se for um match
+                            const separador = `-- ========================================================================= --`;
+                            conteudoConsolidado += `\n${separador}\n-- INÍCIO SCRIPT ${res.numero} (${sistema}/${sgbd}) --\n${separador}\n`;
+                            conteudoConsolidado += res.conteudo;
+                            conteudoConsolidado += `\n${separador}\n-- FIM SCRIPT ${res.numero} --\n${separador}\n`;
+                        }
+                        // Se for Disponível, mas NÃO for Match, é ignorado da lista
                     } else {
-                        // Item de erro moderno
+                        // Scripts indisponíveis sempre são mostrados, independentemente da palavra-chave (pois não têm conteúdo para buscar)
                         resultadosHTML += `<div class="bg-red-50 p-3 rounded-lg border-l-4 border-danger shadow-sm">
                             <span class="text-sm font-medium text-red-700">❌ Script ${res.numero} (${res.status})</span>
                         </div>`;
@@ -193,14 +227,17 @@
                 });
 
                 // Adiciona o botão de pré-visualização consolidada
-                if (scriptsDisponiveis > 0) {
+                if (scriptsFiltrados > 0) {
                     // 💡 NOVO: Cria uma chave única para a cache
-                    const cacheKey = `${sistema}-${sgbd}-${inicioStr}-${fimStr}`; 
+                    const cacheKey = `${sistema}-${sgbd}-${inicioStr}-${fimStr}-${palavraChave}`; // Chave inclui a palavra-chave
                     // 💡 NOVO: Armazena o conteúdo completo (sem codificar) na cache
                     consolidatedContentCache[cacheKey] = conteudoConsolidado; 
                     
                     // Passa apenas a chave para a função (prevenindo SyntaxError)
-                    resultadosHTML += `<button onclick="previsualizarConsolidado('${cacheKey}', '${scriptsDisponiveis}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" class="w-full bg-success text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">📄 Pré-visualização Consolidada (${scriptsDisponiveis} Scripts)</button>`;
+                    resultadosHTML += `<button onclick="previsualizarConsolidado('${cacheKey}', '${scriptsFiltrados}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" class="w-full bg-success text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">📄 Pré-visualização Consolidada (${scriptsFiltrados} Scripts)</button>`;
+                } else if (scriptsDisponiveis > 0 && palavraChave) {
+                    // Caso tenha scripts disponíveis, mas nenhum corresponda à palavra-chave
+                    resultadosHTML += `<p class="text-danger font-bold mt-4">Nenhum script disponível no intervalo corresponde à palavra-chave: "${palavraChave}".</p>`;
                 } else {
                     document.getElementById('preview-area').innerHTML = ''; // Limpa a pré-visualização
                     resultadosHTML += `<p class="text-danger font-bold mt-4">Nenhum script disponível no intervalo.</p>`;
