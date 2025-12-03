@@ -59,28 +59,40 @@
             width: 100%; /* Ajuste a largura dentro do flex container */
         }
 
-        /* Resultados */
+        /* Resultados e Pré-visualização */
         #results { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;}
+        #preview-area { margin-top: 30px; border-top: 2px solid #007bff; padding-top: 20px; }
+        
         .script-link { 
-            display: block; 
+            display: flex; /* Usamos flex para separar o link do botão preview */
+            justify-content: space-between;
+            align-items: center;
             margin: 10px 0; 
             padding: 12px; 
-            background: #e6f2ff; /* Fundo azul claro para links */
+            background: #e6f2ff;
             border-left: 5px solid #007bff;
             text-decoration: none;
             color: #004d99;
             border-radius: 4px;
             font-weight: 500;
+        }
+        .preview-button {
+            background-color: #17a2b8; /* Ciano para visualização */
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
             transition: background-color 0.2s;
         }
-        .script-link:hover {
-            background-color: #cce0ff;
+        .preview-button:hover {
+            background-color: #138496;
         }
         .indisponivel {
             display: block; 
             margin: 10px 0; 
             padding: 12px; 
-            background: #f8d7da; /* Fundo vermelho suave */
+            background: #f8d7da; 
             border-left: 5px solid #dc3545;
             color: #721c24;
             border-radius: 4px;
@@ -120,10 +132,17 @@
     <button onclick="verificarUltimo()">Informações sobre Verificação</button>
     
     <div id="results"></div>
+    
+    <!-- Área para exibir a pré-visualização do script -->
+    <div id="preview-area"></div>
 
     <script>
-        // A URL do seu servidor proxy, onde o Node.js está rodando
-        const PROXY_URL = 'https://medilab-proxy-final.onrender.com/api/buscar-scripts';
+        // URLs do seu serviço Render. ATENÇÃO: Use sempre a URL completa!
+        const BASE_RENDER_URL = 'https://medilab-proxy-final.onrender.com';
+        const PROXY_URL_BUSCA = `${BASE_RENDER_URL}/api/buscar-scripts`;
+        const PROXY_URL_PREVIEW = `${BASE_RENDER_URL}/api/fetch-script`;
+        
+        const BASE_URL_SCRIPTS = 'http://medilab.tecnologia.ws/scriptsbd';
 
         /**
          * Faz a requisição para o servidor proxy e consolida os resultados.
@@ -148,8 +167,8 @@
             document.getElementById('results').innerHTML = html; 
 
             try {
-                // Chama o servidor proxy (backend)
-                const response = await fetch(PROXY_URL, {
+                // Chama a rota de BUSCA (backend)
+                const response = await fetch(PROXY_URL_BUSCA, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -168,12 +187,23 @@
                 let resultadosHTML = `<h3>Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
                 let conteudoConsolidado = '';
                 let scriptsDisponiveis = 0;
-                const BASE_URL_SCRIPTS = 'http://medilab.tecnologia.ws/scriptsbd'; // Necessário para gerar link direto
 
                 data.data.forEach(res => {
                     if (res.status === 'Disponível') {
                         const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${res.numero}.txt`;
-                        resultadosHTML += `<a href="${url}" target="_blank" class="script-link">✅ Script ${res.numero} (Disponível)</a>`;
+                        
+                        // 💡 MUDANÇA: Adiciona um link para download e um botão para pré-visualização
+                        resultadosHTML += `
+                            <div class="script-link">
+                                <span>✅ Script ${res.numero} (Disponível)</span>
+                                <div>
+                                    <a href="${url}" target="_blank" class="preview-button" style="background-color: #38c172; margin-right: 5px;">Baixar</a>
+                                    <button class="preview-button" onclick="previsualizarScript('${url}', '${res.numero}')">Pré-visualizar</button>
+                                </div>
+                            </div>
+                        `;
+
+                        // Conteúdo para o download consolidado (retirado do Render)
                         conteudoConsolidado += `\n\n--- INÍCIO SCRIPT ${res.numero} ---\n`;
                         conteudoConsolidado += res.conteudo;
                         conteudoConsolidado += `\n--- FIM SCRIPT ${res.numero} ---`;
@@ -183,7 +213,7 @@
                     }
                 });
 
-                // Adiciona o botão de download se houver conteúdo
+                // Adiciona o botão de download consolidado
                 if (scriptsDisponiveis > 0) {
                     resultadosHTML += `<button onclick="baixarConsolidado('${encodeURIComponent(conteudoConsolidado)}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" style="background-color: #28a745; margin-top: 20px;">💾 Baixar Conteúdo Consolidado (${scriptsDisponiveis} Scripts)</button>`;
                 } else {
@@ -193,8 +223,40 @@
                 document.getElementById('results').innerHTML = resultadosHTML;
 
             } catch (error) {
-                // Mensagem de erro que não menciona mais localhost
+                // Mensagem de erro atualizada para não mencionar o localhost
                 document.getElementById('results').innerHTML = `<p class="error">🔴 Erro ao acessar o servidor na nuvem. Verifique se o serviço Render está ativo. (${error.message})</p>`;
+            }
+        }
+
+        /**
+         * NOVA FUNÇÃO: Busca o script via proxy e exibe o conteúdo na área de pré-visualização.
+         */
+        async function previsualizarScript(url, numero) {
+            const previewArea = document.getElementById('preview-area');
+            previewArea.innerHTML = `<p>⏳ Buscando conteúdo do Script ${numero} via Render...</p>`;
+            
+            try {
+                // Chama a rota de PREVIEW (backend)
+                const response = await fetch(PROXY_URL_PREVIEW, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }) // Envia a URL do script para o proxy
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    previewArea.innerHTML = `
+                        <h4>📄 Pré-visualização do Script ${numero}</h4>
+                        <pre style="background: #fff; padding: 10px; border: 1px solid #ccc; max-height: 400px; overflow-y: scroll; white-space: pre-wrap; word-break: break-all;">
+                            ${data.content}
+                        </pre>
+                    `;
+                } else {
+                    previewArea.innerHTML = `<p class="error">Falha ao carregar a pré-visualização: ${data.error || 'Erro desconhecido.'}</p>`;
+                }
+            } catch (error) {
+                previewArea.innerHTML = `<p class="error">🔴 Erro de conexão com o proxy durante a pré-visualização. (${error.message})</p>`;
             }
         }
 
