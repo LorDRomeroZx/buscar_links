@@ -2,139 +2,96 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Busca de Scripts VFinal CR</title>
+    <!-- Incluindo Tailwind CSS para um design moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'primary': '#4f46e5', // Indigo
+              'success': '#10b981', // Emerald
+              'danger': '#ef4444', // Red
+            }
+          }
+        }
+      }
+    </script>
     <style>
-        /* Estilos Modernos e Azuis */
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            max-width: 900px; 
-            margin: 0 auto; 
-            padding: 40px 20px; 
-            background-color: #f0f8ff; /* Azul muito claro */
-            color: #333;
-        }
-        h1 {
-            color: #004d99; /* Azul escuro */
-            border-bottom: 2px solid #b3d9ff;
-            padding-bottom: 10px;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: 600;
-        }
-        select, input[type="text"] { 
-            padding: 10px; 
-            margin: 5px 0 10px 0; 
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            width: calc(100% - 22px);
-            box-sizing: border-box;
-        }
-        /* Estilo dos Botões Modernos */
-        button {
-            background-color: #007bff; /* Azul primário */
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 10px 5px 10px 0;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0056b3; /* Azul mais escuro no hover */
-        }
-        /* Estilo do Input de Intervalo (para ficar lado a lado) */
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .input-group > div {
-            flex: 1;
-        }
-        .input-group input {
-            width: 100%; /* Ajuste a largura dentro do flex container */
-        }
-
-        /* Resultados e Pré-visualização */
-        #results { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;}
-        #preview-area { margin-top: 30px; border-top: 2px solid #007bff; padding-top: 20px; }
+        /* Resetting default body margin for full Tailwind control */
+        body { margin: 0; }
         
-        .script-link { 
-            display: flex; /* Usamos flex para separar o link do botão preview */
-            justify-content: space-between;
-            align-items: center;
-            margin: 10px 0; 
-            padding: 12px; 
-            background: #e6f2ff;
-            border-left: 5px solid #007bff;
-            text-decoration: none;
-            color: #004d99;
-            border-radius: 4px;
-            font-weight: 500;
+        /* Custom styling for the technical code preview area */
+        #preview-area pre {
+            background: #1f2937; /* Dark background for code */
+            color: #f9fafb; /* Light text */
+            padding: 1rem;
+            border-radius: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: monospace;
+            border: 1px solid #374151;
         }
-        .preview-button {
-            background-color: #17a2b8; /* Ciano para visualização */
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .preview-button:hover {
-            background-color: #138496;
-        }
-        .indisponivel {
-            display: block; 
-            margin: 10px 0; 
-            padding: 12px; 
-            background: #f8d7da; 
-            border-left: 5px solid #dc3545;
-            color: #721c24;
-            border-radius: 4px;
-        }
-        .error { color: #dc3545; font-weight: bold; }
     </style>
 </head>
-<body>
-    <h1>Busca de Scripts VFinal CR 💾</h1>
+<body class="font-sans bg-gray-50 min-h-screen flex items-start justify-center p-4 sm:p-8">
     
-    <label for="sistema">Sistema:</label>
-    <select id="sistema">
-        <option value="MediClinic">MediClinic</option>
-        <option value="Medisystem">Medisystem</option>
-        <option value="Mediweb">Mediweb</option>
-        <option value="Sislaudo">Sislaudo</option>
-    </select>
-    
-    <label for="sgbd">SGBD:</label>
-    <select id="sgbd">
-        <option value="firebird">Firebird</option>
-        <option value="PostgreSQL">PostgreSQL</option>
-        <option value="Oracle">Oracle</option>
-    </select>
-    
-    <label>Intervalo de Scripts (Máx. 4 Dígitos):</label>
-    <div class="input-group">
-        <div>
-            <input type="text" id="numero_inicio" placeholder="Início (ex: 001)" maxlength="4">
+    <!-- Main Application Card -->
+    <div class="bg-white shadow-2xl rounded-2xl p-6 sm:p-8 w-full max-w-xl mt-10">
+        <h1 class="text-3xl font-extrabold text-primary mb-6 border-b pb-2">Busca de Scripts VFinal CR 💾</h1>
+        
+        <!-- Form Inputs -->
+        <div class="space-y-4">
+            <div>
+                <label for="sistema" class="block text-sm font-medium text-gray-700 mb-1">Sistema:</label>
+                <select id="sistema" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <option value="MediClinic">MediClinic</option>
+                    <option value="Medisystem">Medisystem</option>
+                    <option value="Mediweb">Mediweb</option>
+                    <option value="Sislaudo">Sislaudo</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="sgbd" class="block text-sm font-medium text-gray-700 mb-1">SGBD:</label>
+                <select id="sgbd" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                    <option value="firebird">Firebird</option>
+                    <option value="PostgreSQL">PostgreSQL</option>
+                    <option value="Oracle">Oracle</option>
+                </select>
+            </div>
+            
+            <label class="block text-sm font-medium text-gray-700">Intervalo de Scripts (Máx. 4 Dígitos):</label>
+            <div class="flex space-x-4">
+                <input type="text" id="numero_inicio" placeholder="Início (ex: 001)" maxlength="4" class="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                <input type="text" id="numero_fim" placeholder="Fim (ex: 488)" maxlength="4" class="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+            </div>
         </div>
-        <div>
-            <input type="text" id="numero_fim" placeholder="Fim (ex: 488)" maxlength="4">
+        
+        <!-- Action Buttons -->
+        <div class="flex mt-6 space-x-3">
+            <button onclick="buscarIntervalo()" class="flex-1 bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md">
+                Buscar Scripts no Intervalo
+            </button>
+            <button onclick="verificarUltimo()" class="bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-150 shadow-md">
+                Informações
+            </button>
         </div>
+        
+        <!-- Results Area -->
+        <div id="results" class="mt-8 border-t pt-6 space-y-3"></div>
+        
+        <!-- Preview Area -->
+        <div id="preview-area" class="mt-8"></div>
+        
     </div>
-    
-    <button onclick="buscarIntervalo()">Buscar Scripts no Intervalo</button>
-    <button onclick="verificarUltimo()">Informações sobre Verificação</button>
-    
-    <div id="results"></div>
-    
-    <!-- Área para exibir a pré-visualização do script -->
-    <div id="preview-area"></div>
 
     <script>
         // URLs do seu serviço Render. ATENÇÃO: Use sempre a URL completa!
@@ -158,12 +115,12 @@
             const fim = parseInt(fimStr, 10);
             
             if (isNaN(inicio) || isNaN(fim) || inicio > fim) {
-                document.getElementById('results').innerHTML = '<p class="error">⚠️ Por favor, insira um intervalo válido (início <= fim).</p>';
+                document.getElementById('results').innerHTML = '<p class="text-danger font-bold">⚠️ Por favor, insira um intervalo válido (início <= fim).</p>';
                 return;
             }
 
-            let html = `<h3>Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
-            html += '<p>⏳ Enviando requisição ao servidor proxy (Aguarde alguns segundos)...</p>';
+            let html = `<h3 class="text-xl font-semibold mb-3">Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
+            html += '<p class="text-yellow-600">⏳ Enviando requisição ao servidor proxy (Aguarde alguns segundos)...</p>';
             document.getElementById('results').innerHTML = html; 
 
             try {
@@ -179,12 +136,12 @@
                 const data = await response.json();
 
                 if (!data.sucesso) {
-                    document.getElementById('results').innerHTML = `<p class="error">Erro no servidor: ${data.error || 'Falha desconhecida.'}</p>`;
+                    document.getElementById('results').innerHTML = `<p class="text-danger font-bold">Erro no servidor: ${data.error || 'Falha desconhecida.'}</p>`;
                     return;
                 }
 
                 // Monta o HTML final e o conteúdo consolidado
-                let resultadosHTML = `<h3>Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
+                let resultadosHTML = `<h3 class="text-xl font-semibold mb-3">Scripts de ${inicio.toString().padStart(3, '0')} a ${fim.toString().padStart(3, '0')} (${sistema} / ${sgbd}):</h3>`;
                 let conteudoConsolidado = '';
                 let scriptsDisponiveis = 0;
 
@@ -192,13 +149,13 @@
                     if (res.status === 'Disponível') {
                         const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${res.numero}.txt`;
                         
-                        // 💡 MUDANÇA: Adiciona um link para download e um botão para pré-visualização
+                        // Item de resultado moderno com Tailwind classes
                         resultadosHTML += `
-                            <div class="script-link">
-                                <span>✅ Script ${res.numero} (Disponível)</span>
-                                <div>
-                                    <a href="${url}" target="_blank" class="preview-button" style="background-color: #38c172; margin-right: 5px;">Baixar</a>
-                                    <button class="preview-button" onclick="previsualizarScript('${url}', '${res.numero}')">Pré-visualizar</button>
+                            <div class="flex items-center justify-between bg-green-50 p-3 rounded-lg border-l-4 border-success shadow-sm">
+                                <span class="text-sm font-medium text-gray-800">✅ Script ${res.numero} (Disponível)</span>
+                                <div class="space-x-2">
+                                    <a href="${url}" target="_blank" class="text-xs bg-success text-white py-1 px-3 rounded-full hover:bg-emerald-600 transition">Baixar</a>
+                                    <button class="text-xs bg-primary text-white py-1 px-3 rounded-full hover:bg-indigo-600 transition" onclick="previsualizarScript('${url}', '${res.numero}')">Pré-visualizar</button>
                                 </div>
                             </div>
                         `;
@@ -209,22 +166,29 @@
                         conteudoConsolidado += `\n--- FIM SCRIPT ${res.numero} ---`;
                         scriptsDisponiveis++;
                     } else {
-                        resultadosHTML += `<div class="indisponivel">❌ Script ${res.numero} (${res.status})</div>`;
+                        // Item de erro moderno
+                        resultadosHTML += `<div class="bg-red-50 p-3 rounded-lg border-l-4 border-danger shadow-sm">
+                            <span class="text-sm font-medium text-red-700">❌ Script ${res.numero} (${res.status})</span>
+                        </div>`;
                     }
                 });
 
                 // Adiciona o botão de download consolidado
                 if (scriptsDisponiveis > 0) {
-                    resultadosHTML += `<button onclick="baixarConsolidado('${encodeURIComponent(conteudoConsolidado)}', '${sistema}', '${sgbd}', '${inicioStr}', '${fimStr}')" style="background-color: #28a745; margin-top: 20px;">💾 Baixar Conteúdo Consolidado (${scriptsDisponiveis} Scripts)</button>`;
+                    // Usamos JSON.stringify para garantir que a string seja passada corretamente para o onclick, resolvendo possíveis erros de sintaxe de aspas/caracteres.
+                    const seguroConteudo = JSON.stringify(conteudoConsolidado);
+                    
+                    resultadosHTML += `<button onclick='baixarConsolidado(${seguroConteudo}, "${sistema}", "${sgbd}", "${inicioStr}", "${fimStr}")' class="w-full bg-secondary text-white font-semibold py-3 px-4 rounded-lg hover:bg-emerald-600 transition duration-150 shadow-lg mt-6">💾 Baixar Conteúdo Consolidado (${scriptsDisponiveis} Scripts)</button>`;
                 } else {
-                    resultadosHTML += `<p class="error">Nenhum script disponível no intervalo.</p>`;
+                    document.getElementById('preview-area').innerHTML = ''; // Limpa a pré-visualização
+                    resultadosHTML += `<p class="text-danger font-bold mt-4">Nenhum script disponível no intervalo.</p>`;
                 }
 
                 document.getElementById('results').innerHTML = resultadosHTML;
 
             } catch (error) {
                 // Mensagem de erro atualizada para não mencionar o localhost
-                document.getElementById('results').innerHTML = `<p class="error">🔴 Erro ao acessar o servidor na nuvem. Verifique se o serviço Render está ativo. (${error.message})</p>`;
+                document.getElementById('results').innerHTML = `<p class="text-danger font-bold">🔴 Erro ao acessar o servidor na nuvem. Verifique se o serviço Render está ativo. (${error.message})</p>`;
             }
         }
 
@@ -233,7 +197,7 @@
          */
         async function previsualizarScript(url, numero) {
             const previewArea = document.getElementById('preview-area');
-            previewArea.innerHTML = `<p>⏳ Buscando conteúdo do Script ${numero} via Render...</p>`;
+            previewArea.innerHTML = `<p class="text-indigo-600">⏳ Buscando conteúdo do Script ${numero} via Render...</p>`;
             
             try {
                 // Chama a rota de PREVIEW (backend)
@@ -247,24 +211,41 @@
 
                 if (data.sucesso) {
                     previewArea.innerHTML = `
-                        <h4>📄 Pré-visualização do Script ${numero}</h4>
-                        <pre style="background: #fff; padding: 10px; border: 1px solid #ccc; max-height: 400px; overflow-y: scroll; white-space: pre-wrap; word-break: break-all;">
+                        <h4 class="text-xl font-semibold mb-3 text-primary border-b pb-2">📄 Pré-visualização do Script ${numero}</h4>
+                        <pre>
                             ${data.content}
                         </pre>
                     `;
                 } else {
-                    previewArea.innerHTML = `<p class="error">Falha ao carregar a pré-visualização: ${data.error || 'Erro desconhecido.'}</p>`;
+                    previewArea.innerHTML = `<p class="text-danger font-bold">Falha ao carregar a pré-visualização: ${data.error || 'Erro desconhecido.'}</p>`;
                 }
             } catch (error) {
-                previewArea.innerHTML = `<p class="error">🔴 Erro de conexão com o proxy durante a pré-visualização. (${error.message})</p>`;
+                previewArea.innerHTML = `<p class="text-danger font-bold">🔴 Erro de conexão com o proxy durante a pré-visualização. (${error.message})</p>`;
             }
         }
 
         /**
          * Função auxiliar para gerar e iniciar o download do arquivo consolidado.
          */
-        function baixarConsolidado(conteudoCodificado, sistema, sgbd, inicio, fim) {
-            const conteudo = decodeURIComponent(conteudoCodificado);
+        function baixarConsolidado(conteudoConsolidadoJson, sistema, sgbd, inicio, fim) {
+            // Se a string foi passada via JSON.stringify, ela deve ser parseada:
+            const conteudo = JSON.parse(conteudoConsolidadoJson);
+            
+            // --- NOVO DIAGNÓSTICO: Verifica se o conteúdo está vazio ---
+            if (!conteudo || conteudo.trim().length === 0 || conteudo.trim().length < 10) {
+                // Exibe uma mensagem de erro temporária para o usuário
+                document.getElementById('results').insertAdjacentHTML('afterend',
+                    '<p id="download-error" class="text-danger font-bold text-center mt-4">⚠️ Erro no Download: Conteúdo vazio. Verifique se o servidor Render retornou dados.</p>');
+                
+                // Remove a mensagem após 5 segundos
+                setTimeout(() => {
+                    const errorElem = document.getElementById('download-error');
+                    if (errorElem) errorElem.remove();
+                }, 5000);
+                return;
+            }
+            // --- FIM DO NOVO DIAGNÓSTICO ---
+            
             const nomeArquivo = `${sistema}-${sgbd}-scripts_${inicio}_${fim}.txt`;
             
             // Cria um objeto Blob (Binary Large Object) com o conteúdo
@@ -276,7 +257,7 @@
             a.href = url;
             a.download = nomeArquivo;
             document.body.appendChild(a);
-            a.click();
+            a.click(); // Dispara o download
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
@@ -284,7 +265,7 @@
         // Mantemos a função informativa para o outro botão
         function verificarUltimo() {
             const mensagem = `
-                <h3>✅ Verificação Habilitada</h3>
+                <h3 class="text-xl font-semibold text-primary mb-3">✅ Verificação Habilitada</h3>
                 <p>O servidor proxy (Node.js) agora está fazendo a verificação de disponibilidade. Se a busca não retornar erros de conexão, as mensagens **(Disponível)** ou **(Não encontrado)** serão confiáveis.</p>
             `;
             document.getElementById('results').innerHTML = mensagem;
