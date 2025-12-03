@@ -193,7 +193,8 @@
                 document.getElementById('results').innerHTML = resultadosHTML;
 
             } catch (error) {
-                document.getElementById('results').innerHTML = `<p class="error">🔴 Falha na conexão com o servidor proxy (http://localhost:3000). Verifique se o Node.js está rodando no terminal!</p>`;
+                // CORREÇÃO APLICADA: Mensagem de erro que não menciona mais localhost
+                document.getElementById('results').innerHTML = `<p class="error">🔴 Erro ao acessar o servidor na nuvem. Verifique se o serviço Render está ativo. (${error.message})</p>`;
             }
         }
 
