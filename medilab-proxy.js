@@ -1,7 +1,6 @@
-// ARQUIVO: proxy-scripts.js (Rodando no Node.js)
+// ARQUIVO: medilab-proxy.js (Rodando no Node.js via Render)
 
 const express = require('express');
-// 💡 MUDANÇA CRÍTICA: Usando axios (mais robusto)
 const axios = require('axios'); 
 
 const app = express();
@@ -10,6 +9,7 @@ const BASE_URL_SCRIPTS = 'http://medilab.tecnologia.ws/scriptsbd';
 
 // Middleware para CORS (permite que o frontend acesse este servidor)
 app.use((req, res, next) => {
+    // Nota: O Render usa a porta 10000. O localhost:3000 é apenas um placeholder nos logs.
     res.setHeader('Access-Control-Allow-Origin', '*'); 
     res.setHeader('Access-Control-Allow-Methods', 'POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,6 +19,9 @@ app.use((req, res, next) => {
 // Middleware para entender JSON
 app.use(express.json()); 
 
+/**
+ * ROTA 1: Busca e consolida todos os scripts em um intervalo (Usado para o botão de download)
+ */
 app.post('/api/buscar-scripts', async (req, res) => {
     const { sistema, sgbd, inicio, fim } = req.body;
 
@@ -33,16 +36,15 @@ app.post('/api/buscar-scripts', async (req, res) => {
         const url = `${BASE_URL_SCRIPTS}/${sistema}/${sgbd}/script${numeroFormatado}.txt`;
 
         try {
-            // 💡 REQUISIÇÃO COM AXIOS
-            const response = await axios.get(url);
+            // Requisição com Axios (com tratamento de erro aprimorado)
+            const response = await axios.get(url, { timeout: 15000 }); // Aumentamos o timeout para 15s
 
-            // AXIOS retorna status 200/2XX no objeto 'response'
             if (response.status === 200) { 
                 resultados.push({
                     numero: numeroFormatado,
                     url: url,
                     status: 'Disponível',
-                    conteudo: response.data // Axios usa response.data para o conteúdo
+                    conteudo: response.data // Conteúdo para consolidação
                 });
             } else {
                  resultados.push({
@@ -52,19 +54,18 @@ app.post('/api/buscar-scripts', async (req, res) => {
             }
 
         } catch (error) {
-            // Tratamento de erros do Axios (rede, 404, etc.)
             let status = 'Erro de rede';
             let erroDetalhado = error.message;
 
             if (error.response) {
-                // Erro de resposta (ex: 404, 500)
                 status = `Erro HTTP ${error.response.status}`;
                 if (error.response.status === 404) {
                     status = 'Não encontrado';
                 }
             } else if (error.code) {
-                // Erro de rede (ex: ECONNRESET, ETIMEDOUT)
                 status = `Erro de rede: ${error.code}`;
+            } else if (erroDetalhado.includes('timeout')) {
+                status = 'Erro de rede: Tempo limite (Timeout)';
             }
 
             console.error(`🔴 ERRO CRÍTICO no Node.js ao buscar ${url}:`, erroDetalhado);
@@ -81,6 +82,37 @@ app.post('/api/buscar-scripts', async (req, res) => {
         data: resultados
     });
 });
+
+/**
+ * ROTA 2: Busca o conteúdo de um script específico (Usado para a pré-visualização)
+ */
+app.post('/api/fetch-script', async (req, res) => {
+    const { url } = req.body; // A URL completa do script é enviada pelo frontend
+
+    if (!url) {
+        return res.status(400).json({ error: 'URL do script ausente.' });
+    }
+
+    try {
+        // Axios busca o conteúdo do script externo
+        const response = await axios.get(url, { timeout: 10000 });
+        
+        if (response.status === 200) {
+            // Retorna apenas o conteúdo
+            return res.json({ sucesso: true, content: response.data });
+        } else {
+            return res.status(404).json({ sucesso: false, error: 'Script não encontrado no destino.' });
+        }
+    } catch (error) {
+        let erroDetalhado = (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) 
+                            ? 'Tempo limite esgotado' 
+                            : 'Falha de rede (Bloqueio)';
+                            
+        console.error("Erro no proxy ao buscar script específico:", error.message);
+        return res.status(500).json({ sucesso: false, error: erroDetalhado });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Servidor proxy rodando em http://localhost:${PORT}`);
